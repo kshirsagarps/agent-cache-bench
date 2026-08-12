@@ -1,0 +1,4 @@
+claim_id,classification,description,expected_manuscript_value,independently_calculated_value,absolute_difference,tolerance,status
+C01,Measured,Total raw experiment JSON files pass schema validation,35.0,35.0,0.0,0.0,PASS
+C02,Statistically Supported,Spearman rho between logical overlap and actual compute avoided under context mutation drops below 0.70 threshold,0.5785,0.5785,0.0,0.001,PASS
+C03,Measured,Cold recomputation baseline B0 TTFT overhead factor relative to native cache B1,1.5,1.5,0.0,0.05,PASS
