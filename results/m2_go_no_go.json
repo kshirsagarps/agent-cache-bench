@@ -1,7 +1,14 @@
 {
   "milestone": "M2",
   "decision": "GO",
-  "rationale": "Under context mutation and pause decay (S3/S4), Spearman rho between logical overlap and actual compute avoided dropped to 0.4276 (< 0.70 threshold). Logical overlap substantially overestimates physical KV reuse when prefix modifications or pause evictions occur.",
+  "rationale": "Under context mutation and pause decay (S3/S4), Spearman rho dropped to 0.4276 (< 0.70 threshold).",
   "mutated_spearman_rho": 0.4276,
-  "threshold": 0.7
+  "threshold": 0.7,
+  "gpu_provenance": {
+    "gpu_name": "Tesla T4",
+    "gpu_memory_gb": "14.56",
+    "cuda_version": "12.8",
+    "driver_version": "580.82.07",
+    "is_colab": true
+  }
 }
