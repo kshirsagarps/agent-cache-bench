@@ -1,0 +1,38 @@
+benchmark:
+  name: "AgentCacheBench"
+  version: "0.1.0"
+
+scenarios:
+  S0:
+    name: "Cold Recomputation"
+    description: "No context reuse, reset cache every step."
+  S1:
+    name: "Exact Continuation"
+    description: "Unchanged context continuation."
+  S2:
+    name: "Tool Result Appended"
+    description: "Tool result added to conversation history."
+  S3:
+    name: "Context Mutation"
+    description: "Middle-context insertion and diff editing."
+  S4:
+    name: "Pause/Cache Interruption"
+    description: "Variable inter-tool delays with LRU memory pressure."
+
+workloads:
+  W1: "tool_use"
+  W2: "coding"
+  W3: "rag"
+  W4: "multi_agent"
+
+baselines:
+  B0: "Cold Recomputation"
+  B1: "Native Runtime Prefix Cache (Radix Tree)"
+  B2: "Persistent Session State"
+  B3: "Memory-Constrained LRU Reuse"
+  B4: "Sub-chunk Segment Alignment"
+
+stress_matrix:
+  mutations: [0.0, 0.05, 0.15, 0.30, 0.50]
+  pause_durations_sec: [0.1, 1.0, 5.0, 30.0, 300.0]
+  memory_pressure: ["low", "medium", "high"]

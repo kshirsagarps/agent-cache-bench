@@ -1,0 +1,16 @@
+{
+  "pilot_id": "M2_PILOT_01",
+  "scenarios_evaluated": [
+    "S0",
+    "S1",
+    "S2",
+    "S3",
+    "S4"
+  ],
+  "total_steps_evaluated": 25,
+  "overall_spearman_rho": 0.4924,
+  "mutated_context_spearman_rho": 0.4276,
+  "divergence_observed": true,
+  "mean_logical_overlap": 0.671,
+  "mean_actual_compute_avoided": 0.3479
+}

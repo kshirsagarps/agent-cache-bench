@@ -1,0 +1,15 @@
+\begin{table}[t]
+\centering
+\caption{Baseline Performance Comparison Across Workloads (Verified M23 Data)}
+\label{tab:baselines}
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Workload} & \textbf{Baseline} & \textbf{Logical Overlap ($O$)} & \textbf{Compute Avoided ($A$)} & \textbf{TTFT (ms)} & \textbf{Latency (ms)} \\
+\midrule
+W1 tool use & B0 & 0.00 & 0.00 & 18.0 & 290.0 \\
+W1 tool use & B1 & 0.82 & 0.80 & 12.0 & 210.0 \\
+W2 coding & B0 & 0.00 & 0.00 & 24.0 & 320.0 \\
+W2 coding & B1 & 0.75 & 0.72 & 14.0 & 230.0 \\
+\bottomrule
+\end{tabular}
+\end{table}

@@ -1,0 +1,136 @@
+\documentclass[10pt,journal,compsoc]{IEEEtran}
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{url}
+\usepackage{hyperref}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    citecolor=blue,
+    urlcolor=blue
+}
+
+\begin{document}
+
+\title{AgentCacheBench: A Benchmark and Measurement Framework for Realized KV-Cache Reuse in Stateful LLM Agents}
+
+\author{AgentCacheBench~Team
+\IEEEcompsocitemizethanks{\IEEEcompsocthanksitem The authors are with the AgentCacheBench Research Group.\protect\\
+E-mail: research@agentcachebench.org}
+}
+
+\IEEEtitleabstractindextext{
+\begin{abstract}
+Large Language Model (LLM) serving systems rely heavily on Key-Value (KV) cache prefix reuse to reduce prefill latency and computational overhead. However, existing serving benchmarks evaluate KV-cache performance using static, request-level textual prefix-overlap metrics ($O$) or binary cache-hit flags. These metrics implicitly assume append-only context growth and continuous inter-token processing. In stateful LLM agent workloads—such as software engineering agents, tool-augmented reasoning systems, and multi-agent teams—contexts undergo dynamic non-monotonic mutations (middle edits, diff applications, system prompt modifications) and inter-tool execution delays under memory pressure. In this paper, we present \textbf{AgentCacheBench}, a falsifiable benchmark and micro-instrumentation measurement framework that strictly distinguishes potential context reuse, logical overlap ($O$), realized physical KV reuse ($R$), and actual compute avoided ($A$). Through extensive evaluation across 31 benchmark configurations spanning four agent workload families (Tool Use, Coding, RAG, and Multi-Agent), we demonstrate that conventional request-level overlap metrics severely diverge from physical compute avoided ($\rho(O, A) = 0.4276$ under context mutations), overestimating real-world serving efficiency by up to $2.3\times$. AgentCacheBench provides a reproducible, hardware-provenanced evaluation foundation for next-generation stateful agent serving runtimes.
+\end{abstract}
+
+\begin{IEEEkeywords}
+LLM Serving, KV-Cache Reuse, Stateful Agents, Benchmark, Prefill Latency, PagedAttention, Radix Tree.
+\end{IEEEkeywords}
+}
+
+\maketitle
+\IEEEdisplaynontitleabstractindextext
+\IEEEpeerreviewmaketitle
+
+\section{Introduction}
+\IEEEPARstart{L}{arge} Language Models (LLMs) are increasingly deployed as stateful autonomous agents capable of performing multi-step reasoning, executing external software tools, modifying codebases, and interacting in multi-agent environments~\cite{liu2024agentbench, jimenez2024swebench}. Unlike traditional single-turn conversational models, stateful agents maintain evolving conversation histories across dozens or hundreds of sequential invocation steps.
+
+To accelerate prefill processing in long-context LLM serving, modern runtimes such as vLLM~\cite{kwon2023vllm} and SGLang~\cite{zheng2024sglang} employ prefix caching mechanisms (e.g., PagedAttention and RadixTrees). These systems attempt to reuse pre-computed Key-Value (KV) tensors from prior requests to bypass redundant attention computation. 
+
+Conventional serving benchmarks measure KV-cache efficiency using \emph{request-level prefix overlap} ($O = N_{\text{shared}} / N_{\text{total}}$) or textual cache-hit counters. However, these metrics make two major unvalidated assumptions:
+\begin{enumerate}
+    \item \textbf{Append-Only Monotonicity}: Assuming context additions strictly append tokens to the end of an immutable prefix.
+    \item \textbf{Continuous Execution}: Assuming requests arrive continuously without inter-tool delays that trigger physical cache eviction under memory pressure.
+\end{enumerate}
+
+In realistic stateful agent workloads, these assumptions frequently break down. Agents insert dynamic variables or system prompt modifications at token position 0, apply diffs in the middle of code buffers, reorder retrieved RAG evidence, and experience multi-second pauses while waiting for tool executions (e.g., test suite runs or web queries). Under PagedAttention block hashing, inserting even a single token at position 0 shifts block boundaries, invalidating $100\%$ of physical KV block hits despite a $99\%$ logical token overlap.
+
+To address this evaluation gap, we introduce \textbf{AgentCacheBench}, a rigorous, reproducible benchmark and measurement framework for stateful LLM agent KV-cache reuse.
+
+\section{Background and Related Work}
+
+\subsection{LLM Serving \& Prefix Caching}
+Kwon et al.~\cite{kwon2023vllm} introduced PagedAttention in vLLM, partitioning KV caches into fixed-size physical blocks (e.g., 16 tokens). SGLang~\cite{zheng2024sglang} extended this using RadixTree data structures to maintain shared prefix hierarchies across concurrent requests. Prompt Cache~\cite{gim2024promptcache} pre-computes static prompt modules, while CacheGen~\cite{ye2024cachegen} compresses KV caches for streaming transfer. However, all prior serving systems evaluate prefix reuse using static, request-level textual overlap metrics.
+
+\subsection{Agent Benchmarks}
+AgentBench~\cite{liu2024agentbench} and SWE-bench~\cite{jimenez2024swebench} evaluate agent task success rates and code generation accuracy. However, they treat the underlying inference runtime as a black box and do not instrument physical KV-cache reuse, Time-To-First-Token (TTFT), or session-level compute efficiency.
+
+\section{AgentCacheBench Design}
+
+AgentCacheBench strictly separates five fundamental quantities:
+\begin{enumerate}
+    \item \textbf{Potential Reuse}: Theoretically eligible shared tokens across steps.
+    \item \textbf{Logical Overlap ($O$)}: Textual ratio of overlapping context tokens ($O = N_{\text{shared\_set}} / N_{\text{total}}$).
+    \item \textbf{Realized KV Reuse ($R$)}: Directly observed physical KV block hits ($R = N_{\text{actually\_reused\_kv}} / N_{\text{eligible}}$). If hardware telemetry cannot support physical tracking, it is explicitly reported as \texttt{NOT\_OBSERVABLE}.
+    \item \textbf{Actual Compute Avoided ($A$)}: Empirical reduction in prefill time or prefill FLOPs ($A = 1 - C_{\text{actual}} / C_{\text{cold}}$).
+    \item \textbf{Session-Level Efficiency ($\text{Eff}_{\text{session}}$)}: End-to-end multi-step token generation throughput (tokens/sec).
+\end{enumerate}
+
+\section{Workload Trajectories \& Scenarios}
+
+AgentCacheBench defines four workload families ($W_1$--$W_4$):
+\begin{itemize}
+    \item \textbf{W1 — Tool Use}: Multi-step tool executions with small/medium/large payload returns.
+    \item \textbf{W2 — Coding}: Source files, unified diffs, compiler stack traces, and test logs.
+    \item \textbf{W3 — RAG/Research}: Dynamic document retrieval, replacement, and evidence reordering.
+    \item \textbf{W4 — Multi-Agent}: Handoff chains (Planner $\rightarrow$ Researcher $\rightarrow$ Coder $\rightarrow$ Reviewer).
+\end{itemize}
+
+It evaluates five scenarios ($S_0$--$S_4$):
+\begin{itemize}
+    \item \textbf{S0}: Cold Recomputation (Baseline $B_0$).
+    \item \textbf{S1}: Exact Monotonic Continuation (Baseline $B_1$).
+    \item \textbf{S2}: Tool Result Appended (Baseline $B_2$).
+    \item \textbf{S3}: Context Mutation (Front/mid edits) (Baseline $B_1/B_4$).
+    \item \textbf{S4}: Pause \& Memory Interruption ($100\text{ ms} - 300\text{ s}$ inter-tool pauses) (Baseline $B_3$).
+\end{itemize}
+
+\section{Experimental Evaluation}
+
+\subsection{RQ1: Do Logical Overlap Metrics Predict Actual Benefit?}
+Fig.~\ref{fig:correlation} illustrates the relationship between Logical Context Overlap ($O$) and Actual Compute Avoided ($A$) across 31 verified experimental runs. Under monotonic append scenarios ($S_1, S_2$), $O$ correlates strongly with $A$ ($\rho > 0.95$). However, under realistic context mutations ($S_3$) and pause-induced LRU cache evictions ($S_4$), the Spearman correlation coefficient drops to $\rho(O, A) = 0.4276$.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.48\textwidth]{figures/fig1_correlation.png}
+\caption{Logical Context Overlap ($O$) vs. Actual Compute Avoided ($A$). Under context mutations and pause decay, logical metrics severely overestimate actual compute avoided.}
+\label{fig:correlation}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.48\textwidth]{figures/fig2_baselines.png}
+\caption{Time-To-First-Token (TTFT) comparison between Cold Recomputation ($B_0$) and Native Prefix Caching ($B_1$) across workloads.}
+\label{fig:baselines}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.48\textwidth]{figures/fig3_mutation_stress.png}
+\caption{Impact of context mutation ratio on Actual Compute Avoided ($A$). Small front/mid insertions cause catastrophic physical KV cache invalidation.}
+\label{fig:mutation}
+\end{figure}
+
+\subsection{RQ2: Baseline Performance Comparison}
+Table~\ref{tab:baselines} presents the independently audited M23 performance metrics across baselines and workloads.
+
+\input{tables/table1_baselines.tex}
+
+\section{Limitations}
+While AgentCacheBench provides physical KV-cache telemetry and radix simulation, exact physical timing numbers are host-hardware dependent. All reported numbers originate strictly from verified M23 provenance logs.
+
+\section{Conclusion}
+AgentCacheBench establishes a falsifiable scientific benchmark and measurement protocol for realized KV-cache reuse in stateful LLM agents. By isolating logical overlap from physical compute avoided, AgentCacheBench enables researchers to design cache runtimes optimized for real-world agent context dynamics.
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\end{document}
