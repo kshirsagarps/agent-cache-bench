@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
-[![Google Colab](https://colab.research.google.com/assets/colab-badge.svg)](notebooks/M2_falsification_pilot.ipynb)
+[![Run Full Suite in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kshirsagarps/agent-cache-bench/blob/main/notebooks/AgentCacheBench_Full_Suite.ipynb)
 
 AgentCacheBench is a scientific benchmark and rigorous measurement framework designed to evaluate physical Key-Value (KV) cache reuse, recomputation avoidance, and session-level performance in stateful LLM agent workloads.
 
